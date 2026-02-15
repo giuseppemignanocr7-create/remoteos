@@ -1,0 +1,179 @@
+{
+  "examples": [
+    {
+      "name": "command_run_build",
+      "message": {
+        "protocol_version": "2.0",
+        "id": "3f1e8fd6-2c28-4c52-95df-ecf9ee5b7a01",
+        "timestamp": "2026-02-14T13:20:00Z",
+        "source": "server",
+        "target": "agent",
+        "trace_id": "trace_build_001",
+        "nonce": "n-7f8aa40f8d",
+        "signature": "hmac-sha256:8b5f3a9d7a5c41de92e7c648f5fdd1f03fbc4e52d02ac5f5f3b226a404f81c33",
+        "type": "command",
+        "session_id": "a830df0d-f23b-4faf-86f7-2460868a3340",
+        "action": "run_build",
+        "params": {
+          "project": "ultradivine",
+          "cwd": "C:/workspace/ultradivine",
+          "command": "pnpm build"
+        },
+        "timeout_ms": 300000,
+        "idempotency_key": "build-ultradivine-20260214-1320",
+        "requires_confirm": false,
+        "confirm_policy": "on_mutation",
+        "concurrency_scope": "project"
+      }
+    },
+    {
+      "name": "progress_running_step",
+      "message": {
+        "protocol_version": "2.0",
+        "id": "c47ea76e-b667-4db2-a51f-5300262e6d8b",
+        "timestamp": "2026-02-14T13:20:15Z",
+        "source": "agent",
+        "target": "server",
+        "trace_id": "trace_build_001",
+        "nonce": "n-a8f4f34be4",
+        "signature": "hmac-sha256:9d6e4d35a95d9a50d2f0d68077be6ca373b1b7f244bf1ac22c838f3f86dc6c04",
+        "type": "progress",
+        "command_id": "3f1e8fd6-2c28-4c52-95df-ecf9ee5b7a01",
+        "status": "running",
+        "step": 2,
+        "total_steps": 5,
+        "percent": 40,
+        "message": "pnpm install completato, avvio compilazione",
+        "chunk_index": 0,
+        "chunk_final": false
+      }
+    },
+    {
+      "name": "confirm_request_delete_file",
+      "message": {
+        "protocol_version": "2.0",
+        "id": "d7e26f17-2013-4ac0-9fef-ec7df6de4fd0",
+        "timestamp": "2026-02-14T13:25:40Z",
+        "source": "server",
+        "target": "mobile",
+        "trace_id": "trace_cleanup_004",
+        "nonce": "n-31f3cd39e6",
+        "signature": "hmac-sha256:c7bdbd4b7d7de2fc2d42124c8f920f9984b43f9f857ef8f3efafc8a5ddaba952",
+        "type": "confirm_request",
+        "command_id": "f7279d58-12d7-4bd2-9778-38f73031ef42",
+        "confirm_id": "f9fb8191-dd09-43f6-9027-31ad93f0f6ac",
+        "action": "delete_file",
+        "params": {
+          "path": "C:/workspace/ultradivine/src/legacy.ts"
+        },
+        "message": "Confermi eliminazione file legacy.ts?",
+        "risk_level": "high",
+        "timeout_ms": 60000
+      }
+    },
+    {
+      "name": "confirm_response_approved",
+      "message": {
+        "protocol_version": "2.0",
+        "id": "3c6a72cb-8a89-4130-b938-fcb9769b28a5",
+        "timestamp": "2026-02-14T13:25:51Z",
+        "source": "mobile",
+        "target": "server",
+        "trace_id": "trace_cleanup_004",
+        "nonce": "n-ef0ea56312",
+        "signature": "hmac-sha256:be20b8f7f339f3f85f0735c7ff57ef0ee73c78ccf9960b8002dd4f4f7f93f2e2",
+        "type": "confirm_response",
+        "confirm_id": "f9fb8191-dd09-43f6-9027-31ad93f0f6ac",
+        "command_id": "f7279d58-12d7-4bd2-9778-38f73031ef42",
+        "approved": true,
+        "reason": "Pulizia modulo legacy approvata"
+      }
+    },
+    {
+      "name": "result_success_with_artifact",
+      "message": {
+        "protocol_version": "2.0",
+        "id": "5ab85f09-f95d-4027-ac67-cf944ead17cd",
+        "timestamp": "2026-02-14T13:21:41Z",
+        "source": "agent",
+        "target": "server",
+        "trace_id": "trace_build_001",
+        "nonce": "n-c36a8ff4bc",
+        "signature": "hmac-sha256:ef4da7b611c18f470f3f1f087de33c8cf5af41e0f2d24763f9e3649250ddf2c9",
+        "type": "result",
+        "command_id": "3f1e8fd6-2c28-4c52-95df-ecf9ee5b7a01",
+        "status": "success",
+        "exit_code": 0,
+        "output": "Build completata. 0 errori.",
+        "output_bytes": 28,
+        "output_truncated": false,
+        "duration_ms": 101245,
+        "attachments": [
+          {
+            "type": "log",
+            "url": "https://storage.ultradivine.dev/remoteops/logs/build_3f1e8fd6.log",
+            "content_type": "text/plain",
+            "size_bytes": 18342,
+            "checksum_sha256": "c8f6520fbca4d2844d81121457dfe02f9ce07f7f197f90344f1d37fba091e25b"
+          }
+        ]
+      }
+    },
+    {
+      "name": "event_fallback_invoked",
+      "message": {
+        "protocol_version": "2.0",
+        "id": "9c8ee780-4dc0-46ea-ae30-da95d132e89d",
+        "timestamp": "2026-02-14T13:40:00Z",
+        "source": "server",
+        "target": "mobile",
+        "trace_id": "trace_ui_fix_011",
+        "nonce": "n-72f18ec643",
+        "signature": "hmac-sha256:21a7de3b9f9807ca26d79027749431d2cb23dd9750668b11c5a899d249424ace",
+        "type": "event",
+        "event": "fallback_invoked",
+        "severity": "warning",
+        "data": {
+          "from_level": "L2",
+          "to_level": "L3",
+          "reason": "ui_required",
+          "requires_desktop_confirm": true
+        }
+      }
+    },
+    {
+      "name": "cancel_request_user",
+      "message": {
+        "protocol_version": "2.0",
+        "id": "c2a8d3d6-83ef-4ae9-a7af-15d93b313aaf",
+        "timestamp": "2026-02-14T13:45:05Z",
+        "source": "mobile",
+        "target": "server",
+        "trace_id": "trace_build_090",
+        "nonce": "n-97bc56ecb1",
+        "signature": "hmac-sha256:f698f58f5c51f08bc8012283de86f5c9c9103de6ad133d39b4b1cbf9a1644dfc",
+        "type": "cancel_request",
+        "command_id": "33a94fe6-69ca-400f-a952-c8059f40d896",
+        "requested_by": "user",
+        "reason": "Build troppo lunga, riavvio environment"
+      }
+    },
+    {
+      "name": "cancel_result_cancelled",
+      "message": {
+        "protocol_version": "2.0",
+        "id": "2dc91f1f-62a8-4a70-af24-f8826722a15b",
+        "timestamp": "2026-02-14T13:45:07Z",
+        "source": "agent",
+        "target": "server",
+        "trace_id": "trace_build_090",
+        "nonce": "n-13a8bd9974",
+        "signature": "hmac-sha256:21c217f2bcbe22afe2bfe9e060cce2dc67e6ab9ce2b64940e7eeccbe59eb7f42",
+        "type": "cancel_result",
+        "command_id": "33a94fe6-69ca-400f-a952-c8059f40d896",
+        "status": "cancelled",
+        "message": "Processo terminato con successo"
+      }
+    }
+  ]
+}

@@ -1,0 +1,549 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ultradivine.dev/schemas/remoteops-message.schema.json",
+  "title": "RemoteOps Protocol Message v2",
+  "description": "Schema unificato per i messaggi Mobile <-> Server <-> Agent.",
+  "type": "object",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/commandMessage"
+    },
+    {
+      "$ref": "#/$defs/progressMessage"
+    },
+    {
+      "$ref": "#/$defs/resultMessage"
+    },
+    {
+      "$ref": "#/$defs/eventMessage"
+    },
+    {
+      "$ref": "#/$defs/confirmRequestMessage"
+    },
+    {
+      "$ref": "#/$defs/confirmResponseMessage"
+    },
+    {
+      "$ref": "#/$defs/cancelRequestMessage"
+    },
+    {
+      "$ref": "#/$defs/cancelResultMessage"
+    }
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "baseEnvelope": {
+      "type": "object",
+      "properties": {
+        "protocol_version": {
+          "type": "string",
+          "pattern": "^2(\\.[0-9]+){0,2}$"
+        },
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "timestamp": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "mobile",
+            "server",
+            "agent"
+          ]
+        },
+        "target": {
+          "type": "string",
+          "enum": [
+            "mobile",
+            "server",
+            "agent"
+          ]
+        },
+        "trace_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128
+        },
+        "nonce": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128
+        },
+        "signature": {
+          "type": "string",
+          "pattern": "^(hmac-sha256|ed25519):[A-Fa-f0-9]+$"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "id",
+        "timestamp"
+      ]
+    },
+    "artifact": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "screenshot",
+            "log",
+            "report",
+            "output_chunk"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "content_type": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "checksum_sha256": {
+          "type": "string",
+          "pattern": "^[A-Fa-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "type",
+        "url"
+      ],
+      "additionalProperties": false
+    },
+    "commandMessage": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseEnvelope"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "command"
+            },
+            "session_id": {
+              "$ref": "#/$defs/uuid"
+            },
+            "action": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "params": {
+              "type": "object"
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1000,
+              "maximum": 1800000
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            },
+            "requires_confirm": {
+              "type": "boolean"
+            },
+            "confirm_policy": {
+              "type": "string",
+              "enum": [
+                "never",
+                "on_mutation",
+                "always"
+              ]
+            },
+            "concurrency_scope": {
+              "type": "string",
+              "enum": [
+                "none",
+                "project",
+                "global"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "session_id",
+            "action",
+            "params",
+            "timeout_ms",
+            "idempotency_key"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "progressStatus": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "sent",
+        "running",
+        "retrying",
+        "awaiting_confirm",
+        "cancelling"
+      ]
+    },
+    "progressMessage": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseEnvelope"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "progress"
+            },
+            "command_id": {
+              "$ref": "#/$defs/uuid"
+            },
+            "status": {
+              "$ref": "#/$defs/progressStatus"
+            },
+            "step": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "total_steps": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "percent": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "message": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "output_chunk": {
+              "type": "string"
+            },
+            "chunk_index": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "chunk_final": {
+              "type": "boolean"
+            },
+            "artifacts": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/artifact"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "command_id",
+            "status"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "resultStatus": {
+      "type": "string",
+      "enum": [
+        "success",
+        "error",
+        "timeout",
+        "cancelled",
+        "terminated",
+        "agent_crashed"
+      ]
+    },
+    "resultMessage": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseEnvelope"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "result"
+            },
+            "command_id": {
+              "$ref": "#/$defs/uuid"
+            },
+            "status": {
+              "$ref": "#/$defs/resultStatus"
+            },
+            "exit_code": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "output": {
+              "type": "string"
+            },
+            "output_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "output_truncated": {
+              "type": "boolean"
+            },
+            "duration_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "error_code": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "error_details": {
+              "type": "object"
+            },
+            "attachments": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/artifact"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "command_id",
+            "status",
+            "duration_ms"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "eventMessage": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseEnvelope"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "enum": [
+                "agent_online",
+                "agent_offline",
+                "heartbeat_timeout",
+                "process_crashed",
+                "disk_warning",
+                "cpu_warning",
+                "build_complete",
+                "session_started",
+                "session_ended",
+                "fallback_invoked"
+              ]
+            },
+            "severity": {
+              "type": "string",
+              "enum": [
+                "info",
+                "warning",
+                "error",
+                "critical"
+              ]
+            },
+            "data": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "type",
+            "event",
+            "severity",
+            "data"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "confirmRequestMessage": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseEnvelope"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "confirm_request"
+            },
+            "command_id": {
+              "$ref": "#/$defs/uuid"
+            },
+            "confirm_id": {
+              "$ref": "#/$defs/uuid"
+            },
+            "action": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "params": {
+              "type": "object"
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "risk_level": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                "critical"
+              ]
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1000,
+              "maximum": 600000
+            }
+          },
+          "required": [
+            "type",
+            "command_id",
+            "confirm_id",
+            "action",
+            "message",
+            "risk_level",
+            "timeout_ms"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "confirmResponseMessage": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseEnvelope"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "confirm_response"
+            },
+            "confirm_id": {
+              "$ref": "#/$defs/uuid"
+            },
+            "command_id": {
+              "$ref": "#/$defs/uuid"
+            },
+            "approved": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "type",
+            "confirm_id",
+            "approved"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "cancelRequestMessage": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseEnvelope"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "cancel_request"
+            },
+            "command_id": {
+              "$ref": "#/$defs/uuid"
+            },
+            "requested_by": {
+              "type": "string",
+              "enum": [
+                "user",
+                "system",
+                "policy"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "type",
+            "command_id",
+            "requested_by"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "cancelResultMessage": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseEnvelope"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "cancel_result"
+            },
+            "command_id": {
+              "$ref": "#/$defs/uuid"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "cancelled",
+                "not_found",
+                "already_finished",
+                "denied"
+              ]
+            },
+            "message": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "type",
+            "command_id",
+            "status"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}

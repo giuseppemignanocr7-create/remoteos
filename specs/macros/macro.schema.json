@@ -1,0 +1,300 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ultradivine.dev/schemas/remoteops-macro.schema.json",
+  "title": "RemoteOps Macro Schema v2",
+  "description": "Schema per macro RemoteOps con step tipizzati, trigger, policy di errore e conferma.",
+  "type": "object",
+  "required": [
+    "name",
+    "version",
+    "steps",
+    "triggers",
+    "is_active"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9_\\-]{3,64}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "owner_scope": {
+      "type": "string",
+      "enum": [
+        "private",
+        "team",
+        "global"
+      ],
+      "default": "private"
+    },
+    "is_active": {
+      "type": "boolean"
+    },
+    "requires_confirm": {
+      "type": "boolean",
+      "default": false
+    },
+    "readonly_compatible": {
+      "type": "boolean",
+      "default": false
+    },
+    "params": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/macroParam"
+      }
+    },
+    "triggers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/trigger"
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/step"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "macroParam": {
+      "type": "object",
+      "required": [
+        "name",
+        "type",
+        "required"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]{1,63}$"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "string",
+            "number",
+            "boolean",
+            "array",
+            "object"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "default": {},
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": [
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "schedule",
+            "event"
+          ]
+        },
+        "cron": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "timezone": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "event_name": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "event_filter": {
+          "type": "object"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "schedule"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "cron",
+              "timezone"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "event"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "event_name"
+            ]
+          }
+        }
+      ]
+    },
+    "retryPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 0
+        },
+        "backoff_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 600000,
+          "default": 0
+        }
+      }
+    },
+    "onError": {
+      "type": "object",
+      "required": [
+        "strategy"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": [
+            "abort",
+            "continue",
+            "retry",
+            "fallback_step"
+          ]
+        },
+        "fallback_step_id": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "notify": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "strategy": {
+                "const": "fallback_step"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "fallback_step_id"
+            ]
+          }
+        }
+      ]
+    },
+    "step": {
+      "type": "object",
+      "required": [
+        "id",
+        "tool"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_\\-]{1,79}$"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "tool": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "args": {
+          "type": "object",
+          "default": {}
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 1800000,
+          "default": 300000
+        },
+        "requires_confirm": {
+          "type": "boolean",
+          "default": false
+        },
+        "retry": {
+          "$ref": "#/$defs/retryPolicy"
+        },
+        "on_error": {
+          "$ref": "#/$defs/onError"
+        },
+        "when": {
+          "type": "string",
+          "description": "Espressione booleana (DSL applicativa) valutata a runtime.",
+          "maxLength": 500
+        },
+        "save_as": {
+          "type": "string",
+          "description": "Nome variabile per salvare l'output step",
+          "maxLength": 120
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 80
+          }
+        }
+      }
+    }
+  }
+}

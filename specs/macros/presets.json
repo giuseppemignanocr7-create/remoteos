@@ -1,0 +1,414 @@
+{
+  "version": "2.0.0",
+  "timezone_default": "Europe/Rome",
+  "presets": [
+    {
+      "name": "fix_quick",
+      "version": "1.0.0",
+      "description": "Aggiorna dipendenze, pulisce cache, build e diagnostica errore.",
+      "owner_scope": "private",
+      "is_active": true,
+      "requires_confirm": false,
+      "readonly_compatible": false,
+      "params": [
+        {
+          "name": "project_path",
+          "type": "string",
+          "required": true,
+          "description": "Percorso assoluto progetto"
+        },
+        {
+          "name": "branch",
+          "type": "string",
+          "required": false,
+          "default": "main"
+        }
+      ],
+      "triggers": [
+        {
+          "source": "manual"
+        }
+      ],
+      "steps": [
+        {
+          "id": "git_pull",
+          "tool": "git_pull",
+          "args": {
+            "repo_path": "{{project_path}}",
+            "branch": "{{branch}}"
+          },
+          "timeout_ms": 120000,
+          "retry": {
+            "max_retries": 1,
+            "backoff_ms": 1500
+          },
+          "on_error": {
+            "strategy": "abort",
+            "notify": true
+          }
+        },
+        {
+          "id": "install",
+          "tool": "run_command",
+          "args": {
+            "cwd": "{{project_path}}",
+            "cmd": "pnpm install"
+          },
+          "timeout_ms": 600000,
+          "retry": {
+            "max_retries": 1,
+            "backoff_ms": 2000
+          },
+          "on_error": {
+            "strategy": "abort",
+            "notify": true
+          }
+        },
+        {
+          "id": "clean_cache",
+          "tool": "run_command",
+          "args": {
+            "cwd": "{{project_path}}",
+            "cmd": "powershell -NoProfile -Command \"Remove-Item -Recurse -Force node_modules/.cache,.next,.vite -ErrorAction SilentlyContinue\""
+          },
+          "timeout_ms": 180000,
+          "on_error": {
+            "strategy": "continue",
+            "notify": false
+          }
+        },
+        {
+          "id": "build",
+          "tool": "run_build",
+          "args": {
+            "project": "{{project_path}}"
+          },
+          "timeout_ms": 600000,
+          "save_as": "build_result",
+          "on_error": {
+            "strategy": "fallback_step",
+            "fallback_step_id": "capture_failure_context",
+            "notify": true
+          }
+        },
+        {
+          "id": "capture_failure_context",
+          "tool": "capture_screenshot",
+          "args": {},
+          "when": "{{build_result.status}} == 'error'",
+          "timeout_ms": 30000,
+          "on_error": {
+            "strategy": "continue",
+            "notify": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "deploy_safe",
+      "version": "1.0.0",
+      "description": "Esegue test, richiede conferma e deploy con health check.",
+      "owner_scope": "private",
+      "is_active": true,
+      "requires_confirm": true,
+      "readonly_compatible": false,
+      "params": [
+        {
+          "name": "project_path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "health_url",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "triggers": [
+        {
+          "source": "manual"
+        }
+      ],
+      "steps": [
+        {
+          "id": "tests",
+          "tool": "run_tests",
+          "args": {
+            "project": "{{project_path}}"
+          },
+          "timeout_ms": 900000,
+          "on_error": {
+            "strategy": "abort",
+            "notify": true
+          }
+        },
+        {
+          "id": "confirm_deploy",
+          "tool": "request_confirm",
+          "args": {
+            "message": "Test passati. Procedo con deploy?",
+            "risk_level": "high"
+          },
+          "timeout_ms": 120000,
+          "requires_confirm": true,
+          "on_error": {
+            "strategy": "abort",
+            "notify": true
+          }
+        },
+        {
+          "id": "build",
+          "tool": "run_build",
+          "args": {
+            "project": "{{project_path}}"
+          },
+          "timeout_ms": 900000,
+          "on_error": {
+            "strategy": "abort",
+            "notify": true
+          }
+        },
+        {
+          "id": "deploy",
+          "tool": "deploy_vercel",
+          "args": {
+            "project": "{{project_path}}"
+          },
+          "timeout_ms": 600000,
+          "save_as": "deploy_result",
+          "on_error": {
+            "strategy": "abort",
+            "notify": true
+          }
+        },
+        {
+          "id": "health_check",
+          "tool": "run_command",
+          "args": {
+            "cmd": "curl -fsS {{health_url}}"
+          },
+          "timeout_ms": 30000,
+          "on_error": {
+            "strategy": "retry",
+            "notify": true
+          },
+          "retry": {
+            "max_retries": 2,
+            "backoff_ms": 2000
+          }
+        }
+      ]
+    },
+    {
+      "name": "diagnostics",
+      "version": "1.0.0",
+      "description": "Raccoglie metriche sistema e genera report diagnostico.",
+      "owner_scope": "private",
+      "is_active": true,
+      "requires_confirm": false,
+      "readonly_compatible": true,
+      "params": [
+        {
+          "name": "log_path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "tail_n",
+          "type": "number",
+          "required": false,
+          "default": 50
+        }
+      ],
+      "triggers": [
+        {
+          "source": "manual"
+        }
+      ],
+      "steps": [
+        {
+          "id": "system_stats",
+          "tool": "get_system_stats",
+          "args": {},
+          "save_as": "stats"
+        },
+        {
+          "id": "top_processes",
+          "tool": "get_processes",
+          "args": {
+            "sort_by": "cpu",
+            "limit": 10
+          },
+          "save_as": "processes"
+        },
+        {
+          "id": "tail_log",
+          "tool": "read_log",
+          "args": {
+            "path": "{{log_path}}",
+            "tail_n": "{{tail_n}}"
+          },
+          "save_as": "logs"
+        },
+        {
+          "id": "screen",
+          "tool": "capture_screenshot",
+          "args": {}
+        },
+        {
+          "id": "report",
+          "tool": "run_command",
+          "args": {
+            "cmd": "echo diagnostics report generated"
+          }
+        }
+      ]
+    },
+    {
+      "name": "restart_dev",
+      "version": "1.0.0",
+      "description": "Riavvia ambiente dev su porte note e verifica salute.",
+      "owner_scope": "private",
+      "is_active": true,
+      "requires_confirm": false,
+      "readonly_compatible": false,
+      "params": [
+        {
+          "name": "project_path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ports",
+          "type": "array",
+          "required": false,
+          "default": [3000, 5173, 8000]
+        },
+        {
+          "name": "health_url",
+          "type": "string",
+          "required": false,
+          "default": "http://localhost:5173"
+        }
+      ],
+      "triggers": [
+        {
+          "source": "manual"
+        }
+      ],
+      "steps": [
+        {
+          "id": "stop_ports",
+          "tool": "run_command",
+          "args": {
+            "cmd": "powershell -NoProfile -Command \"$ports=@({{ports}}); foreach($p in $ports){ Get-NetTCPConnection -LocalPort $p -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } }\""
+          },
+          "timeout_ms": 60000,
+          "on_error": {
+            "strategy": "continue",
+            "notify": false
+          }
+        },
+        {
+          "id": "start_dev",
+          "tool": "run_command",
+          "args": {
+            "cwd": "{{project_path}}",
+            "cmd": "pnpm dev"
+          },
+          "timeout_ms": 120000,
+          "save_as": "dev_start_result"
+        },
+        {
+          "id": "wait_5s",
+          "tool": "run_command",
+          "args": {
+            "cmd": "powershell -NoProfile -Command \"Start-Sleep -Seconds 5\""
+          },
+          "timeout_ms": 10000
+        },
+        {
+          "id": "health",
+          "tool": "run_command",
+          "args": {
+            "cmd": "curl -fsS {{health_url}}"
+          },
+          "timeout_ms": 20000,
+          "retry": {
+            "max_retries": 2,
+            "backoff_ms": 2000
+          },
+          "on_error": {
+            "strategy": "abort",
+            "notify": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "watchdog_project",
+      "version": "1.0.0",
+      "description": "Monitor periodico health endpoint con auto-restart e notifica errore.",
+      "owner_scope": "private",
+      "is_active": true,
+      "requires_confirm": false,
+      "readonly_compatible": false,
+      "params": [
+        {
+          "name": "project_path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "health_url",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "triggers": [
+        {
+          "source": "schedule",
+          "cron": "*/5 * * * *",
+          "timezone": "Europe/Rome",
+          "enabled": true
+        }
+      ],
+      "steps": [
+        {
+          "id": "health_check",
+          "tool": "run_command",
+          "args": {
+            "cmd": "curl -fsS {{health_url}}"
+          },
+          "timeout_ms": 20000,
+          "save_as": "health"
+        },
+        {
+          "id": "restart_on_fail",
+          "tool": "run_macro",
+          "args": {
+            "name": "restart_dev",
+            "params": {
+              "project_path": "{{project_path}}"
+            }
+          },
+          "when": "{{health.status}} == 'error'",
+          "timeout_ms": 180000,
+          "on_error": {
+            "strategy": "continue",
+            "notify": true
+          }
+        },
+        {
+          "id": "notify_if_unhealthy",
+          "tool": "run_command",
+          "args": {
+            "cmd": "echo watchdog failure: service unhealthy"
+          },
+          "when": "{{health.status}} == 'error'",
+          "timeout_ms": 10000
+        }
+      ]
+    }
+  ]
+}

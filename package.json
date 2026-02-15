@@ -1,0 +1,22 @@
+{
+  "name": "remoteos",
+  "version": "2.0.0",
+  "private": true,
+  "description": "RemoteOps Suite v2 — Monorepo",
+  "scripts": {
+    "dev:server": "pnpm --filter @remoteos/server dev",
+    "dev:agent": "pnpm --filter @remoteos/agent dev",
+    "build:shared": "pnpm --filter @remoteos/shared build",
+    "build:server": "pnpm --filter @remoteos/server build",
+    "build:agent": "pnpm --filter @remoteos/agent build",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "db:up": "docker compose up -d postgres redis",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @remoteos/server migration:run"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
